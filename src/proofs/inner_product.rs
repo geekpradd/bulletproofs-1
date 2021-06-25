@@ -246,7 +246,7 @@ impl InnerProductArg {
     /// Uses a single multiexponentiation (multiscalar multiplication in additive notation)
     /// check to verify an inner product proof.
     ///
-    pub fn generic_pedersen_commitment(&self, x: &[Vec<FE>], G: &[Vec<GE>], gamma: &FE, u: &GE) -> GE {
+    pub fn generic_pedersen_commitment(x: &[Vec<FE>], G: &[Vec<GE>], gamma: &FE, u: &GE) -> GE {
         let base = u * &gamma;
         let accumulated = x.iter().zip(G.clone()).fold(base, |acc, y| {
             let smaller = y.0.iter().zip(y.1.clone()).fold(acc, |acc2, z| {
@@ -257,7 +257,7 @@ impl InnerProductArg {
         });
         accumulated
     }
-    pub fn montgormery_inversion(&self, a: &[FE]) -> Vec<FE> {
+    pub fn montgormery_inversion( a: &[FE]) -> Vec<FE> {
         let n = a.len();
         let mut product: Vec<FE> = Vec::new();
         let identity: BigInt = BigInt::one();
@@ -623,7 +623,24 @@ mod tests {
         let verifier = ipp.verify(&g_vec, &hi_tag, &Gx, &P);
         assert!(verifier.is_ok())
     }
+    #[test] 
+    fn test_inversion() {
+        let n: usize = 1000;
+        let a: Vec<FE> = (0..n)
+            .map(|_| {
+                let rand: FE = ECScalar::new_random();
+                rand
+            })
+            .collect();
+        
+        let mut b = InnerProductArg::montgormery_inversion(&a);
 
+        for i in 0..n {
+            b[i] = a[i]*b[i];
+            let val = b[i].to_big_int();
+            assert!(val == BigInt::one());
+        }
+    }
     #[test]
     fn make_ipp_32() {
         test_helper(32);
