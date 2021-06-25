@@ -246,6 +246,44 @@ impl InnerProductArg {
     /// Uses a single multiexponentiation (multiscalar multiplication in additive notation)
     /// check to verify an inner product proof.
     ///
+    pub fn generic_pedersen_commitment(&self, x: &[Vec<FE>], G: &[Vec<GE>], gamma: &FE, u: &GE) -> GE {
+        let base = u * &gamma;
+        let accumulated = x.iter().zip(G.clone()).fold(base, |acc, y| {
+            let smaller = y.0.iter().zip(y.1.clone()).fold(acc, |acc2, z| {
+                let new_entry: GE = z.1 * z.0;
+                acc2.add_point(&new_entry.get_element())
+            });
+            smaller
+        });
+        accumulated
+    }
+    pub fn montgormery_inversion(&self, a: &[FE]) -> Vec<FE> {
+        let n = a.len();
+        let mut product: Vec<FE> = Vec::new();
+        let identity: BigInt = BigInt::one();
+        let identity_element: FE = ECScalar::from(&identity);
+        let total = a.iter().fold(identity_element, |acc, y| {
+            let new_elem = acc * y;
+            product.push(new_elem);
+            new_elem
+        });
+        let total_invert = total.invert();
+        let mut copied = total_invert.clone();
+        
+        let mut reversed_partial_inverse = (1..n).map(|i| {
+            copied = a[n-i]*copied;
+            copied
+        }).collect::<Vec<FE>>();
+        reversed_partial_inverse.reverse();
+        reversed_partial_inverse.push(total_invert);
+        
+        for i in 1..n {
+            reversed_partial_inverse[i] = reversed_partial_inverse[i]*product[i-1];
+        }
+
+        reversed_partial_inverse
+
+    }
     pub fn fast_verify(&self, g_vec: &[GE], hi_tag: &[GE], ux: &GE, P: &GE) -> Result<(), Errors> {
         let G = &g_vec[..];
         let H = &hi_tag[..];
